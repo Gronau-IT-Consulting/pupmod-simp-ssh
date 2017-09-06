@@ -258,7 +258,7 @@ class ssh::server::conf (
   sshd_config { 'UsePAM'                          : value => ssh::config_bool_translate($pam) }
   sshd_config { 'UsePrivilegeSeparation'          : value => ssh::config_bool_translate($useprivilegeseparation) }
   sshd_config { 'X11Forwarding'                   : value => ssh::config_bool_translate($x11forwarding) }
-  if $passwordauthentication { sshd_config { 'PasswordAuthentication' : value => ssh::config_bool_translate($passwordauthentication) } }
+  if $passwordauthentication != undef { sshd_config { 'PasswordAuthentication' : value => ssh_config_bool_translate($passwordauthentication) } }
   # Kex should be empty openssl < 5.7, they are not supported.
   if !empty($_kex_algorithms) { sshd_config { 'KexAlgorithms': value => $_kex_algorithms } }
 
