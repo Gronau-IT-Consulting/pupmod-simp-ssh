@@ -19,13 +19,23 @@ class ssh::client (
     ssh::client::host_config_entry { '*': }
   }
 
+  if $facts['os']['name'] in ['RedHat','CentOS'] {
+    $_package = 'openssh-clients'
+  }
+  elsif $facts['os']['name'] in ['Debian','Ubuntu'] {
+    $_package = 'openssh-client'
+  }
+  else {
+    fail("OS '${facts['os']['name']}' not supported by '${module_name}'")
+  }
+
   concat { '/etc/ssh/ssh_config':
     owner          => 'root',
     group          => 'root',
     mode           => '0644',
     ensure_newline => true,
     warn           => true,
-    require        => Package['openssh-clients']
+    require        => Package[$_package]
   }
 
   file { '/etc/ssh/ssh_known_hosts':
@@ -34,7 +44,7 @@ class ssh::client (
     mode  => '0644'
   }
 
-  package { 'openssh-clients': ensure => 'latest' }
+  package { $_package: ensure => 'latest' }
 
   if $haveged {
     include '::haveged'

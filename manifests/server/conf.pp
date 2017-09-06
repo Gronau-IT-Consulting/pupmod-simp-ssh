@@ -161,9 +161,20 @@ class ssh::server::conf (
     include '::haveged'
   }
 
+  if $facts['os']['name'] in ['RedHat','CentOS'] {
+    $_service = 'sshd'
+  }
+  elsif $facts['os']['name'] in ['Debian','Ubuntu'] {
+    $_service = 'ssh'
+  }
+  else {
+    fail("OS '${facts['os']['name']}' not supported by '${module_name}'")
+  }
+
   if $authorizedkeyscommand {
     if ( $facts['os']['name'] in ['RedHat','CentOS','Fedora'] )
       and ( $facts['os']['release']['major'] > '6' )
+      or ( $facts['os']['name'] in ['Debian','Ubuntu'] )
     {
       if !$authorizedkeyscommanduser or empty($authorizedkeyscommanduser) {
         fail('$authorizedkeyscommanduser must be set if $authorizedkeyscommand is set')
@@ -238,7 +249,7 @@ class ssh::server::conf (
     owner  => 'root',
     group  => 'root',
     mode   => '0600',
-    notify => Service['sshd'],
+    notify => Service[$_service],
   }
 
   sshd_config { 'AcceptEnv'                       : value => $acceptenv }
@@ -266,6 +277,7 @@ class ssh::server::conf (
     sshd_config { 'AuthorizedKeysCommand': value => $authorizedkeyscommand }
     if ( $facts['os']['name'] in ['RedHat','CentOS','Fedora'] )
       and ( $facts['os']['release']['major'] > '6' )
+      or ( $facts['os']['name'] in ['Debian','Ubuntu'] )
     {
       sshd_config { 'AuthorizedKeysCommandUser': value => $authorizedkeyscommanduser }
     }
@@ -276,6 +288,7 @@ class ssh::server::conf (
     sshd_config { 'AuthorizedKeysCommand': value => '/usr/bin/sss_ssh_authorizedkeys' }
     if ( $facts['os']['name'] in ['RedHat','CentOS','Fedora'] )
       and ( $facts['os']['release']['major'] > '6' )
+      or ( $facts['os']['name'] in ['Debian','Ubuntu'] )
     {
       sshd_config { 'AuthorizedKeysCommandUser': value => $authorizedkeyscommanduser }
     }
@@ -284,6 +297,7 @@ class ssh::server::conf (
     sshd_config { 'AuthorizedKeysCommand': value => '/usr/libexec/openssh/ssh-ldap-wrapper' }
     if ( $facts['os']['name'] in ['RedHat','CentOS','Fedora'] )
       and ( $facts['os']['release']['major'] > '6' )
+      or ( $facts['os']['name'] in ['Debian','Ubuntu'] )
     {
       sshd_config { 'AuthorizedKeysCommandUser': value => $authorizedkeyscommanduser }
     }

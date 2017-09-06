@@ -7,13 +7,27 @@ class ssh::server {
   include '::ssh'
   include '::ssh::server::conf'
 
-  # A hack to work around broken Augeas Lenses
-  file { '/usr/share/augeas/lenses/sshd.aug':
-    owner  => 'root',
-    group  => 'root',
-    mode   => '0640',
-    source => "puppet:///modules/${module_name}/augeas_lenses/sshd.aug",
-    before => Class['ssh::server::conf']
+  if $facts['os']['name'] in ['RedHat','CentOS'] {
+    $_nologin = '/sbin/nologin'
+    $_service = 'sshd'
+  }
+  elsif $facts['os']['name'] in ['Debian','Ubuntu'] {
+    $_nologin = '/usr/sbin/nologin'
+    $_service = 'ssh'
+  }
+  else {
+    fail("OS '${facts['os']['name']}' not supported by '${module_name}'")
+  }
+
+  if $facts['os']['name'] in ['RedHat','CentOS'] {
+    # A hack to work around broken Augeas Lenses
+    file { '/usr/share/augeas/lenses/sshd.aug':
+      owner  => 'root',
+      group  => 'root',
+      mode   => '0640',
+      source => "puppet:///modules/${module_name}/augeas_lenses/sshd.aug",
+      before => Class['ssh::server::conf']
+    }
   }
 
   file { '/etc/ssh/moduli':
@@ -46,29 +60,31 @@ class ssh::server {
     mode  => '0644'
   }
 
-  file { '/var/empty/sshd':
-    ensure  => 'directory',
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0711',
-    require => Package['openssh-server'],
-  }
+  if $facts['os']['name'] in ['RedHat','CentOS'] {
+    file { '/var/empty/sshd':
+      ensure  => 'directory',
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0711',
+      require => Package['openssh-server'],
+    }
 
-  file { '/var/empty/sshd/etc':
-    ensure  => 'directory',
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0711',
-    require => Package['openssh-server']
-  }
+    file { '/var/empty/sshd/etc':
+      ensure  => 'directory',
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0711',
+      require => Package['openssh-server']
+    }
 
-  file { '/var/empty/sshd/etc/localtime':
-    source  => '/etc/localtime',
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0644',
-    force   => true,
-    require => Package['openssh-server']
+    file { '/var/empty/sshd/etc/localtime':
+      source  => '/etc/localtime',
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+      force   => true,
+      require => Package['openssh-server']
+    }
   }
 
   group { 'sshd':
@@ -90,11 +106,11 @@ class ssh::server {
     gid        => '74',
     home       => '/var/empty/sshd',
     membership => 'inclusive',
-    shell      => '/sbin/nologin',
+    shell      => $_nologin,
     uid        => '74'
   }
 
-  service { 'sshd':
+  service { $_service:
     ensure     => 'running',
     enable     => true,
     hasstatus  => true,
@@ -121,7 +137,7 @@ class ssh::server {
         '/usr/sbin',
         '/usr/bin'
       ],
-      notify  => Service['sshd'],
+      notify  => Service[$_service],
     }
   }
 
@@ -133,7 +149,7 @@ class ssh::server {
       mode      => '0600',
       source    => "file://${::ssh::server::conf::app_pki_key}",
       subscribe => Pki::Copy['sshd'],
-      notify    => [ Exec['gensshpub'], Service['sshd'] ],
+      notify    => [ Exec['gensshpub'], Service[$_service] ],
     }
 
     file { '/etc/ssh/ssh_host_rsa_key.pub':
